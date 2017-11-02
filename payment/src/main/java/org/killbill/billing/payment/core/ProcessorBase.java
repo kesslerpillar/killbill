@@ -24,6 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 
 import javax.annotation.Nullable;
+import javax.inject.Inject;
 
 import org.killbill.billing.ErrorCode;
 import org.killbill.billing.ObjectType;
@@ -55,7 +56,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 
-public abstract class ProcessorBase {
+public class ProcessorBase {
 
     private static final Logger log = LoggerFactory.getLogger(ProcessorBase.class);
 
@@ -69,6 +70,7 @@ public abstract class ProcessorBase {
     protected final Clock clock;
     protected final InvoiceInternalApi invoiceApi;
 
+    @Inject
     public ProcessorBase(final PaymentPluginServiceRegistration paymentPluginServiceRegistration,
                          final AccountInternalApi accountInternalApi,
                          final PaymentDao paymentDao,

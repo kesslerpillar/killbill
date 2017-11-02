@@ -27,28 +27,18 @@ import org.killbill.billing.ErrorCode;
 import org.killbill.billing.account.api.Account;
 import org.killbill.billing.account.api.AccountApiException;
 import org.killbill.billing.callcontext.InternalCallContext;
-import org.killbill.billing.callcontext.InternalTenantContext;
 import org.killbill.billing.catalog.api.Currency;
 import org.killbill.billing.payment.api.*;
 import org.killbill.billing.payment.core.sm.PaymentAutomatonDAOHelper;
 import org.killbill.billing.payment.core.sm.PaymentAutomatonRunner;
 import org.killbill.billing.payment.core.sm.PaymentStateContext;
-import org.killbill.billing.payment.dao.PaymentAttemptModelDao;
 import org.killbill.billing.payment.dao.PaymentModelDao;
 import org.killbill.billing.payment.dao.PaymentTransactionModelDao;
-import org.killbill.billing.payment.glue.DefaultPaymentService;
 import org.killbill.billing.payment.plugin.api.PaymentPluginApi;
 import org.killbill.billing.payment.plugin.api.PaymentPluginApiException;
 import org.killbill.billing.payment.plugin.api.PaymentTransactionInfoPlugin;
-import org.killbill.billing.payment.retry.DefaultRetryService;
-import org.killbill.billing.payment.retry.PaymentRetryNotificationKey;
 import org.killbill.billing.util.callcontext.CallContext;
 import org.killbill.billing.util.callcontext.TenantContext;
-import org.killbill.notificationq.api.NotificationEvent;
-import org.killbill.notificationq.api.NotificationEventWithMetadata;
-import org.killbill.notificationq.api.NotificationQueue;
-import org.killbill.notificationq.api.NotificationQueueService;
-import org.killbill.notificationq.api.NotificationQueueService.NoSuchNotificationQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +56,6 @@ public class PaymentProcessor{
     private static final ImmutableList<PluginProperty> PLUGIN_PROPERTIES = ImmutableList.of();
 
     private final PaymentAutomatonRunner paymentAutomatonRunner;
-    private final NotificationQueueService notificationQueueService;
     private ProcessorBase processorBase;
     private PaymentLocator paymentLocator;
 
@@ -75,11 +64,9 @@ public class PaymentProcessor{
 
     @Inject
     public PaymentProcessor(final PaymentAutomatonRunner paymentAutomatonRunner,
-                            final NotificationQueueService notificationQueueService,
                             final ProcessorBase processorBase,
                             final PaymentLocator paymentLocator) {
         this.paymentAutomatonRunner = paymentAutomatonRunner;
-        this.notificationQueueService = notificationQueueService;
         this.processorBase = processorBase;
         this.paymentLocator = paymentLocator;
     }
@@ -141,50 +128,6 @@ public class PaymentProcessor{
         return performOperation(true, runJanitor, null, transactionModelDao.getTransactionType(), account, null, transactionModelDao.getPaymentId(),
                                 transactionModelDao.getId(), transactionModelDao.getAmount(), transactionModelDao.getCurrency(), null, transactionModelDao.getTransactionExternalKey(), null, null, true,
                                 overridePluginResult, PLUGIN_PROPERTIES, callContext, internalCallContext);
-    }
-
-    public void cancelScheduledPaymentTransaction(@Nullable final UUID paymentTransactionId, @Nullable final String paymentTransactionExternalKey, final CallContext callContext) throws PaymentApiException {
-
-        final InternalCallContext internalCallContextWithoutAccountRecordId = processorBase.internalCallContextFactory.createInternalCallContextWithoutAccountRecordId(callContext);
-        final String effectivePaymentTransactionExternalKey;
-        if (paymentTransactionExternalKey == null) {
-            final PaymentTransactionModelDao transaction = processorBase.paymentDao.getPaymentTransaction(paymentTransactionId, internalCallContextWithoutAccountRecordId);
-            effectivePaymentTransactionExternalKey = transaction.getTransactionExternalKey();
-        } else {
-            effectivePaymentTransactionExternalKey = paymentTransactionExternalKey;
-        }
-
-        final List<PaymentAttemptModelDao> attempts = processorBase.paymentDao.getPaymentAttemptByTransactionExternalKey(effectivePaymentTransactionExternalKey, internalCallContextWithoutAccountRecordId);
-        if (attempts.isEmpty()) {
-            return;
-        }
-
-        final PaymentAttemptModelDao lastPaymentAttempt = attempts.get(attempts.size() - 1);
-        final InternalCallContext internalCallContext = processorBase.internalCallContextFactory.createInternalCallContext(lastPaymentAttempt.getAccountId(), callContext);
-
-        cancelScheduledPaymentTransaction(lastPaymentAttempt.getId(), internalCallContext);
-    }
-
-    public void cancelScheduledPaymentTransaction(final UUID lastPaymentAttemptId, final InternalCallContext internalCallContext) throws PaymentApiException {
-        try {
-            final NotificationQueue retryQueue = notificationQueueService.getNotificationQueue(DefaultPaymentService.SERVICE_NAME, DefaultRetryService.QUEUE_NAME);
-            final Iterable<NotificationEventWithMetadata<NotificationEvent>> notificationEventWithMetadatas =
-                    retryQueue.getFutureNotificationForSearchKeys(internalCallContext.getAccountRecordId(), internalCallContext.getTenantRecordId());
-
-            for (final NotificationEventWithMetadata<NotificationEvent> notificationEvent : notificationEventWithMetadatas) {
-                if (((PaymentRetryNotificationKey) notificationEvent.getEvent()).getAttemptId().equals(lastPaymentAttemptId)) {
-                    retryQueue.removeNotification(notificationEvent.getRecordId());
-                }
-                // Go through all results to close the connection
-            }
-        } catch (final NoSuchNotificationQueue noSuchNotificationQueue) {
-            log.error("ERROR Loading Notification Queue - " + noSuchNotificationQueue.getMessage());
-            throw new IllegalStateException(noSuchNotificationQueue);
-        }
-    }
-
-    public Payment getPaymentByTransactionId(final UUID transactionId, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-        return paymentLocator.getPaymentByTransactionId(transactionId, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
     }
 
     private Payment performOperation(final boolean isApiPayment,

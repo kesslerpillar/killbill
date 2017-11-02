@@ -39,10 +39,7 @@ import org.killbill.billing.payment.api.PaymentApiException;
 import org.killbill.billing.payment.api.PluginProperty;
 import org.killbill.billing.payment.api.TransactionStatus;
 import org.killbill.billing.payment.api.TransactionType;
-import org.killbill.billing.payment.core.PaymentExecutors;
-import org.killbill.billing.payment.core.PaymentLocator;
-import org.killbill.billing.payment.core.PaymentProcessor;
-import org.killbill.billing.payment.core.PluginControlPaymentProcessor;
+import org.killbill.billing.payment.core.*;
 import org.killbill.billing.payment.core.sm.PluginControlPaymentAutomatonRunner.ControlOperation;
 import org.killbill.billing.payment.core.sm.control.ControlPluginRunner;
 import org.killbill.billing.payment.core.sm.control.PaymentStateControlContext;
@@ -112,6 +109,8 @@ public class TestRetryablePayment extends PaymentTestSuiteNoDB {
     private InternalCallContextFactory internalCallContextFactory;
     @Inject
     private PaymentLocator paymentLocator;
+    @Inject
+    private PaymentCanceller paymentCanceller;
 
     private Account account;
     private DateTime utcNow;
@@ -175,7 +174,8 @@ public class TestRetryablePayment extends PaymentTestSuiteNoDB {
                 retrySMHelper,
                 controlPluginRunner,
                 eventBus,
-                paymentLocator);
+                paymentLocator,
+                paymentCanceller);
 
         paymentStateContext =
                 new PaymentStateControlContext(ImmutableList.<String>of(MockPaymentControlProviderPlugin.PLUGIN_NAME),

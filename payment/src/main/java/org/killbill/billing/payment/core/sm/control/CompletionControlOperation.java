@@ -27,6 +27,7 @@ import org.killbill.billing.payment.api.Payment;
 import org.killbill.billing.payment.api.PaymentApiException;
 import org.killbill.billing.payment.api.PluginProperty;
 import org.killbill.billing.payment.api.TransactionStatus;
+import org.killbill.billing.payment.core.PaymentCanceller;
 import org.killbill.billing.payment.core.PaymentLocator;
 import org.killbill.billing.payment.core.PaymentProcessor;
 import org.killbill.billing.payment.core.ProcessorBase.DispatcherCallback;
@@ -47,6 +48,7 @@ public class CompletionControlOperation extends OperationControlCallback {
 
     private static final Joiner JOINER = Joiner.on(", ");
     private PaymentLocator paymentLocator;
+    private PaymentCanceller paymentCanceller;
 
     public CompletionControlOperation(final GlobalLocker locker,
                                       final PluginDispatcher<OperationResult> paymentPluginDispatcher,
@@ -54,9 +56,11 @@ public class CompletionControlOperation extends OperationControlCallback {
                                       final PaymentStateControlContext paymentStateContext,
                                       final PaymentProcessor paymentProcessor,
                                       final ControlPluginRunner controlPluginRunner,
-                                      final PaymentLocator paymentLocator) {
+                                      final PaymentLocator paymentLocator,
+                                      final PaymentCanceller paymentCanceller) {
         super(locker, paymentPluginDispatcher, paymentStateContext, paymentProcessor, paymentConfig, controlPluginRunner);
         this.paymentLocator = paymentLocator;
+        this.paymentCanceller = paymentCanceller;
     }
 
     @Override
@@ -94,7 +98,7 @@ public class CompletionControlOperation extends OperationControlCallback {
                         executePluginOnSuccessCalls(paymentStateControlContext.getPaymentControlPluginNames(), updatedPaymentControlContext);
 
                         // Remove scheduled retry, if any
-                        paymentProcessor.cancelScheduledPaymentTransaction(paymentStateControlContext.getAttemptId(), paymentStateControlContext.getInternalCallContext());
+                        paymentCanceller.cancelScheduledPaymentTransaction(paymentStateControlContext.getAttemptId(), paymentStateControlContext.getInternalCallContext());
 
                         return PluginDispatcher.createPluginDispatcherReturnType(OperationResult.SUCCESS);
                     } else {

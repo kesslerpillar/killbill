@@ -30,10 +30,7 @@ import org.killbill.billing.ObjectType;
 import org.killbill.billing.account.api.Account;
 import org.killbill.billing.callcontext.InternalCallContext;
 import org.killbill.billing.catalog.api.Currency;
-import org.killbill.billing.payment.core.PaymentLocator;
-import org.killbill.billing.payment.core.PaymentMethodProcessor;
-import org.killbill.billing.payment.core.PaymentProcessor;
-import org.killbill.billing.payment.core.PluginControlPaymentProcessor;
+import org.killbill.billing.payment.core.*;
 import org.killbill.billing.util.UUIDs;
 import org.killbill.billing.util.callcontext.CallContext;
 import org.killbill.billing.util.callcontext.InternalCallContextFactory;
@@ -62,14 +59,20 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
     private final PaymentMethodProcessor paymentMethodProcessor;
     private final PluginControlPaymentProcessor pluginControlPaymentProcessor;
     private PaymentLocator paymentLocator;
+    private PaymentCanceller paymentCanceller;
 
     @Inject
-    public DefaultPaymentApi(final PaymentConfig paymentConfig, final PaymentProcessor paymentProcessor, final PaymentMethodProcessor paymentMethodProcessor, final PluginControlPaymentProcessor pluginControlPaymentProcessor, final InternalCallContextFactory internalCallContextFactory, final PaymentLocator paymentLocator) {
+    public DefaultPaymentApi(final PaymentConfig paymentConfig, final PaymentProcessor paymentProcessor,
+                             final PaymentMethodProcessor paymentMethodProcessor,
+                             final PluginControlPaymentProcessor pluginControlPaymentProcessor,
+                             final InternalCallContextFactory internalCallContextFactory,
+                             final PaymentLocator paymentLocator, final PaymentCanceller paymentCanceller) {
         super(paymentConfig, internalCallContextFactory);
         this.paymentProcessor = paymentProcessor;
         this.paymentMethodProcessor = paymentMethodProcessor;
         this.pluginControlPaymentProcessor = pluginControlPaymentProcessor;
         this.paymentLocator = paymentLocator;
+        this.paymentCanceller = paymentCanceller;
     }
 
     @Override
@@ -663,13 +666,13 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
     @Override
     public void cancelScheduledPaymentTransaction(final String paymentTransactionExternalKey, final CallContext callContext) throws PaymentApiException {
         checkNotNullParameter(paymentTransactionExternalKey, "paymentTransactionExternalKey");
-        paymentProcessor.cancelScheduledPaymentTransaction(null, paymentTransactionExternalKey, callContext);
+        paymentCanceller.cancelScheduledPaymentTransaction(null, paymentTransactionExternalKey, callContext);
     }
 
     @Override
     public void cancelScheduledPaymentTransaction(final UUID paymentTransactionId, final CallContext callContext) throws PaymentApiException {
         checkNotNullParameter(paymentTransactionId, "paymentTransactionId");
-        paymentProcessor.cancelScheduledPaymentTransaction(paymentTransactionId, null, callContext);
+        paymentCanceller.cancelScheduledPaymentTransaction(paymentTransactionId, null, callContext);
     }
 
     @Override
@@ -1064,7 +1067,7 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
 
     @Override
     public Payment getPaymentByTransactionId(final UUID transactionId, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext context) throws PaymentApiException {
-        final Payment payment = paymentProcessor.getPaymentByTransactionId(transactionId, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContext(transactionId, ObjectType.TRANSACTION, context));
+        final Payment payment = paymentLocator.getPaymentByTransactionId(transactionId, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContext(transactionId, ObjectType.TRANSACTION, context));
         if (payment == null) {
             throw new PaymentApiException(ErrorCode.PAYMENT_NO_SUCH_PAYMENT, transactionId);
         }

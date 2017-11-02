@@ -43,6 +43,7 @@ import org.killbill.billing.payment.api.PaymentApiException;
 import org.killbill.billing.payment.api.PluginProperty;
 import org.killbill.billing.payment.api.TransactionType;
 import org.killbill.billing.payment.core.PaymentExecutors;
+import org.killbill.billing.payment.core.PaymentLocator;
 import org.killbill.billing.payment.core.PaymentPluginServiceRegistration;
 import org.killbill.billing.payment.core.PaymentProcessor;
 import org.killbill.billing.payment.core.sm.control.AuthorizeControlOperation;
@@ -93,12 +94,13 @@ public class PluginControlPaymentAutomatonRunner extends PaymentAutomatonRunner 
     private final PaymentControlStateMachineHelper paymentControlStateMachineHelper;
     private final ControlPluginRunner controlPluginRunner;
     private final PaymentConfig paymentConfig;
+    private PaymentLocator paymentLocator;
 
     @Inject
     public PluginControlPaymentAutomatonRunner(final PaymentDao paymentDao, final GlobalLocker locker, final PaymentPluginServiceRegistration paymentPluginServiceRegistration,
                                                final OSGIServiceRegistration<PaymentControlPluginApi> paymentControlPluginRegistry, final Clock clock, final PaymentProcessor paymentProcessor, @Named(RETRYABLE_NAMED) final RetryServiceScheduler retryServiceScheduler,
                                                final PaymentConfig paymentConfig, final PaymentExecutors executors, final PaymentStateMachineHelper paymentSMHelper, final PaymentControlStateMachineHelper paymentControlStateMachineHelper,
-                                               final ControlPluginRunner controlPluginRunner, final PersistentBus eventBus) {
+                                               final ControlPluginRunner controlPluginRunner, final PersistentBus eventBus, final PaymentLocator paymentLocator) {
         super(paymentConfig, paymentDao, locker, paymentPluginServiceRegistration, clock, executors, eventBus, paymentSMHelper);
         this.paymentProcessor = paymentProcessor;
         this.paymentControlPluginRegistry = paymentControlPluginRegistry;
@@ -106,6 +108,7 @@ public class PluginControlPaymentAutomatonRunner extends PaymentAutomatonRunner 
         this.paymentControlStateMachineHelper = paymentControlStateMachineHelper;
         this.controlPluginRunner = controlPluginRunner;
         this.paymentConfig = paymentConfig;
+        this.paymentLocator = paymentLocator;
     }
 
     public Payment run(final boolean isApiPayment,
@@ -265,7 +268,7 @@ public class PluginControlPaymentAutomatonRunner extends PaymentAutomatonRunner 
 
     public Payment completeRun(final PaymentStateControlContext paymentStateContext) throws PaymentApiException {
         try {
-            final OperationCallback callback = new CompletionControlOperation(locker, paymentPluginDispatcher, paymentConfig, paymentStateContext, paymentProcessor, controlPluginRunner);
+            final OperationCallback callback = new CompletionControlOperation(locker, paymentPluginDispatcher, paymentConfig, paymentStateContext, paymentProcessor, controlPluginRunner, paymentLocator);
             final LeavingStateCallback leavingStateCallback = new NoopControlInitiated();
             final EnteringStateCallback enteringStateCallback = new DefaultControlCompleted(this, paymentStateContext, paymentControlStateMachineHelper.getRetriedState(), retryServiceScheduler);
 

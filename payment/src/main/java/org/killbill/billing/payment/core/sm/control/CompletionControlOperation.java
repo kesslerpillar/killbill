@@ -27,6 +27,7 @@ import org.killbill.billing.payment.api.Payment;
 import org.killbill.billing.payment.api.PaymentApiException;
 import org.killbill.billing.payment.api.PluginProperty;
 import org.killbill.billing.payment.api.TransactionStatus;
+import org.killbill.billing.payment.core.PaymentLocator;
 import org.killbill.billing.payment.core.PaymentProcessor;
 import org.killbill.billing.payment.core.ProcessorBase.DispatcherCallback;
 import org.killbill.billing.payment.core.sm.control.ControlPluginRunner.DefaultPaymentControlContext;
@@ -45,14 +46,17 @@ import com.google.common.collect.ImmutableList;
 public class CompletionControlOperation extends OperationControlCallback {
 
     private static final Joiner JOINER = Joiner.on(", ");
+    private PaymentLocator paymentLocator;
 
     public CompletionControlOperation(final GlobalLocker locker,
                                       final PluginDispatcher<OperationResult> paymentPluginDispatcher,
                                       final PaymentConfig paymentConfig,
                                       final PaymentStateControlContext paymentStateContext,
                                       final PaymentProcessor paymentProcessor,
-                                      final ControlPluginRunner controlPluginRunner) {
+                                      final ControlPluginRunner controlPluginRunner,
+                                      final PaymentLocator paymentLocator) {
         super(locker, paymentPluginDispatcher, paymentStateContext, paymentProcessor, paymentConfig, controlPluginRunner);
+        this.paymentLocator = paymentLocator;
     }
 
     @Override
@@ -109,6 +113,6 @@ public class CompletionControlOperation extends OperationControlCallback {
 
     @Override
     protected Payment doCallSpecificOperationCallback() throws PaymentApiException {
-        return paymentProcessor.getPayment(paymentStateContext.getPaymentId(), false, false, ImmutableList.<PluginProperty>of(), paymentStateContext.getCallContext(), paymentStateContext.getInternalCallContext());
+        return paymentLocator.getPayment(paymentStateContext.getPaymentId(), false, false, ImmutableList.<PluginProperty>of(), paymentStateContext.getCallContext(), paymentStateContext.getInternalCallContext());
     }
 }

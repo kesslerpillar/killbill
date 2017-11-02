@@ -44,7 +44,6 @@ import org.killbill.billing.payment.retry.DefaultRetryService;
 import org.killbill.billing.payment.retry.PaymentRetryNotificationKey;
 import org.killbill.billing.util.callcontext.CallContext;
 import org.killbill.billing.util.callcontext.TenantContext;
-import org.killbill.billing.util.entity.Pagination;
 import org.killbill.notificationq.api.NotificationEvent;
 import org.killbill.notificationq.api.NotificationEventWithMetadata;
 import org.killbill.notificationq.api.NotificationQueue;
@@ -142,40 +141,6 @@ public class PaymentProcessor{
         return performOperation(true, runJanitor, null, transactionModelDao.getTransactionType(), account, null, transactionModelDao.getPaymentId(),
                                 transactionModelDao.getId(), transactionModelDao.getAmount(), transactionModelDao.getCurrency(), null, transactionModelDao.getTransactionExternalKey(), null, null, true,
                                 overridePluginResult, PLUGIN_PROPERTIES, callContext, internalCallContext);
-    }
-
-    public List<Payment> getAccountPayments(final UUID accountId, final boolean withPluginInfo, final boolean withAttempts, final TenantContext context, final InternalTenantContext tenantContext) throws PaymentApiException {
-         return paymentLocator.getAccountPayments(accountId, withPluginInfo, withAttempts, context, tenantContext);
-    }
-
-    public Payment getPayment(final UUID paymentId, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-        return paymentLocator.getPayment(paymentId, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
-    }
-
-    public Payment getPaymentByExternalKey(final String paymentExternalKey, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-        return paymentLocator.getPaymentByExternalKey(paymentExternalKey, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
-    }
-
-    private Payment getPayment(final PaymentModelDao paymentModelDao, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-        return paymentLocator.getPayment(paymentModelDao, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
-    }
-
-    public Pagination<Payment> getPayments(final Long offset, final Long limit, final boolean withPluginInfo, final boolean withAttempts,
-                                           final TenantContext tenantContext, final InternalTenantContext internalTenantContext) {
-        return paymentLocator.getPayments(offset, limit, withPluginInfo, withAttempts, tenantContext, internalTenantContext);
-    }
-
-    public Pagination<Payment> getPayments(final Long offset, final Long limit, final String pluginName, final boolean withPluginInfo, final boolean withAttempts, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-        return paymentLocator.getPayments(offset, limit, pluginName, withPluginInfo, withAttempts, tenantContext, internalTenantContext);
-    }
-
-    public Pagination<Payment> searchPayments(final String searchKey, final Long offset, final Long limit, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) {
-        return paymentLocator.searchPayments(searchKey, offset, limit, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
-    }
-
-    public Pagination<Payment> searchPayments(final String searchKey, final Long offset, final Long limit, final String pluginName, final boolean withPluginInfo,
-                                              final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-         return paymentLocator.searchPayments(searchKey, offset, limit, pluginName, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
     }
 
     public void cancelScheduledPaymentTransaction(@Nullable final UUID paymentTransactionId, @Nullable final String paymentTransactionExternalKey, final CallContext callContext) throws PaymentApiException {
@@ -339,7 +304,7 @@ public class PaymentProcessor{
 
         paymentAutomatonRunner.run(paymentStateContext, daoHelper, currentStateName, transactionType);
 
-        return getPayment(paymentStateContext.getPaymentModelDao(), true, false, properties, callContext, internalCallContext);
+        return paymentLocator.getPayment(paymentStateContext.getPaymentModelDao(), true, false, properties, callContext, internalCallContext);
     }
 
     private void runSanityOnTransactionExternalKey(final Iterable<PaymentTransactionModelDao> allPaymentTransactionsForKey,

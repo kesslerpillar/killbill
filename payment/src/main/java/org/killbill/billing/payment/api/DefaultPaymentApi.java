@@ -30,6 +30,7 @@ import org.killbill.billing.ObjectType;
 import org.killbill.billing.account.api.Account;
 import org.killbill.billing.callcontext.InternalCallContext;
 import org.killbill.billing.catalog.api.Currency;
+import org.killbill.billing.payment.core.PaymentLocator;
 import org.killbill.billing.payment.core.PaymentMethodProcessor;
 import org.killbill.billing.payment.core.PaymentProcessor;
 import org.killbill.billing.payment.core.PluginControlPaymentProcessor;
@@ -60,13 +61,15 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
     private final PaymentProcessor paymentProcessor;
     private final PaymentMethodProcessor paymentMethodProcessor;
     private final PluginControlPaymentProcessor pluginControlPaymentProcessor;
+    private PaymentLocator paymentLocator;
 
     @Inject
-    public DefaultPaymentApi(final PaymentConfig paymentConfig, final PaymentProcessor paymentProcessor, final PaymentMethodProcessor paymentMethodProcessor, final PluginControlPaymentProcessor pluginControlPaymentProcessor, final InternalCallContextFactory internalCallContextFactory) {
+    public DefaultPaymentApi(final PaymentConfig paymentConfig, final PaymentProcessor paymentProcessor, final PaymentMethodProcessor paymentMethodProcessor, final PluginControlPaymentProcessor pluginControlPaymentProcessor, final InternalCallContextFactory internalCallContextFactory, final PaymentLocator paymentLocator) {
         super(paymentConfig, internalCallContextFactory);
         this.paymentProcessor = paymentProcessor;
         this.paymentMethodProcessor = paymentMethodProcessor;
         this.pluginControlPaymentProcessor = pluginControlPaymentProcessor;
+        this.paymentLocator = paymentLocator;
     }
 
     @Override
@@ -684,7 +687,7 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
             final InternalCallContext internalCallContext = internalCallContextFactory.createInternalCallContext(account.getId(), callContext);
             payment = paymentProcessor.notifyPendingPaymentOfStateChanged(account, paymentTransactionId, isSuccess, callContext, internalCallContext);
 
-            paymentTransaction = Iterables.<PaymentTransaction>tryFind(payment.getTransactions(),
+            paymentTransaction = Iterables.tryFind(payment.getTransactions(),
                                                                                                 new Predicate<PaymentTransaction>() {
                                                                                                     @Override
                                                                                                     public boolean apply(final PaymentTransaction transaction) {
@@ -732,7 +735,7 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
             final InternalCallContext internalCallContext = internalCallContextFactory.createInternalCallContext(account.getId(), callContext);
             payment = pluginControlPaymentProcessor.notifyPendingPaymentOfStateChanged(IS_API_PAYMENT, account, paymentTransactionId, isSuccess, paymentControlPluginNames, callContext, internalCallContext);
 
-            paymentTransaction = Iterables.<PaymentTransaction>tryFind(payment.getTransactions(),
+            paymentTransaction = Iterables.tryFind(payment.getTransactions(),
                                                                        new Predicate<PaymentTransaction>() {
                                                                            @Override
                                                                            public boolean apply(final PaymentTransaction transaction) {
@@ -909,7 +912,7 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
             payment = pluginControlPaymentProcessor.createChargebackReversal(IS_API_PAYMENT, account, paymentId, paymentTransactionExternalKey, paymentControlPluginNames, callContext, internalCallContext);
 
             // See https://github.com/killbill/killbill/issues/552
-            paymentTransaction = Iterables.<PaymentTransaction>find(Lists.<PaymentTransaction>reverse(payment.getTransactions()),
+            paymentTransaction = Iterables.find(Lists.reverse(payment.getTransactions()),
                                                                     new Predicate<PaymentTransaction>() {
                                                                         @Override
                                                                         public boolean apply(final PaymentTransaction input) {
@@ -940,22 +943,22 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
 
     @Override
     public List<Payment> getAccountPayments(final UUID accountId, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext) throws PaymentApiException {
-        return paymentProcessor.getAccountPayments(accountId, withPluginInfo, withAttempts, tenantContext, internalCallContextFactory.createInternalTenantContext(accountId, tenantContext));
+        return paymentLocator.getAccountPayments(accountId, withPluginInfo, withAttempts, tenantContext, internalCallContextFactory.createInternalTenantContext(accountId, tenantContext));
     }
 
     @Override
     public Pagination<Payment> getPayments(final Long offset, final Long limit, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext context) {
-        return paymentProcessor.getPayments(offset, limit, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(context));
+        return paymentLocator.getPayments(offset, limit, withPluginInfo, withAttempts, context, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(context));
     }
 
     @Override
     public Pagination<Payment> getPayments(final Long offset, final Long limit, final String pluginName, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext) throws PaymentApiException {
-        return paymentProcessor.getPayments(offset, limit, pluginName, withPluginInfo, withAttempts, properties, tenantContext, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(tenantContext));
+        return paymentLocator.getPayments(offset, limit, pluginName, withPluginInfo, withAttempts, tenantContext, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(tenantContext));
     }
 
     @Override
     public Payment getPayment(final UUID paymentId, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext context) throws PaymentApiException {
-        final Payment payment = paymentProcessor.getPayment(paymentId, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContext(paymentId, ObjectType.PAYMENT, context));
+        final Payment payment = paymentLocator.getPayment(paymentId, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContext(paymentId, ObjectType.PAYMENT, context));
         if (payment == null) {
             throw new PaymentApiException(ErrorCode.PAYMENT_NO_SUCH_PAYMENT, paymentId);
         }
@@ -965,7 +968,7 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
     @Override
     public Payment getPaymentByExternalKey(final String paymentExternalKey, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext)
             throws PaymentApiException {
-        final Payment payment = paymentProcessor.getPaymentByExternalKey(paymentExternalKey, withPluginInfo, withAttempts, properties, tenantContext, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(tenantContext));
+        final Payment payment = paymentLocator.getPaymentByExternalKey(paymentExternalKey, withPluginInfo, withAttempts, properties, tenantContext, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(tenantContext));
         if (payment == null) {
             throw new PaymentApiException(ErrorCode.PAYMENT_NO_SUCH_PAYMENT, paymentExternalKey);
         }
@@ -974,12 +977,12 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
 
     @Override
     public Pagination<Payment> searchPayments(final String searchKey, final Long offset, final Long limit, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext context) {
-        return paymentProcessor.searchPayments(searchKey, offset, limit, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(context));
+        return paymentLocator.searchPayments(searchKey, offset, limit, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(context));
     }
 
     @Override
     public Pagination<Payment> searchPayments(final String searchKey, final Long offset, final Long limit, final String pluginName, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext context) throws PaymentApiException {
-        return paymentProcessor.searchPayments(searchKey, offset, limit, pluginName, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(context));
+        return paymentLocator.searchPayments(searchKey, offset, limit, pluginName, withPluginInfo, withAttempts, properties, context, internalCallContextFactory.createInternalTenantContextWithoutAccountRecordId(context));
     }
     @Override
     public UUID addPaymentMethod(final Account account, final String paymentMethodExternalKey, final String pluginName,
@@ -1073,7 +1076,7 @@ public class DefaultPaymentApi extends DefaultApiBase implements PaymentApi {
         if (paymentTransactionExternalKey == null) {
             return Iterables.getLast(payment.getTransactions());
         } else {
-            return Iterables.<PaymentTransaction>find(Lists.<PaymentTransaction>reverse(payment.getTransactions()),
+            return Iterables.find(Lists.reverse(payment.getTransactions()),
                                                       new Predicate<PaymentTransaction>() {
                                                           @Override
                                                           public boolean apply(final PaymentTransaction input) {

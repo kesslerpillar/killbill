@@ -27,11 +27,7 @@ import org.killbill.billing.osgi.api.OSGIServiceRegistration;
 import org.killbill.billing.payment.api.PaymentApi;
 import org.killbill.billing.payment.api.PaymentGatewayApi;
 import org.killbill.billing.payment.caching.StateMachineConfigCache;
-import org.killbill.billing.payment.core.PaymentExecutors;
-import org.killbill.billing.payment.core.PaymentMethodProcessor;
-import org.killbill.billing.payment.core.PaymentPluginServiceRegistration;
-import org.killbill.billing.payment.core.PaymentProcessor;
-import org.killbill.billing.payment.core.PluginControlPaymentProcessor;
+import org.killbill.billing.payment.core.*;
 import org.killbill.billing.payment.core.sm.PaymentStateMachineHelper;
 import org.killbill.billing.payment.core.sm.PluginControlPaymentAutomatonRunner;
 import org.killbill.billing.payment.dao.MockPaymentDao;
@@ -104,6 +100,8 @@ public abstract class PaymentTestSuiteNoDB extends GuicyKillbillTestSuiteNoDB {
     protected CacheInvalidationCallback cacheInvalidationCallback;
     @Inject
     protected TenantInternalApi tenantInternalApi;
+    @Inject
+    protected PaymentLocator paymentLocator;
 
     @Override
     protected KillbillConfigSource getConfigSource() {

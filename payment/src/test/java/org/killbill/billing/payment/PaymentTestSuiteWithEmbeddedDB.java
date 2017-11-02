@@ -27,15 +27,13 @@ import org.killbill.billing.payment.api.AdminPaymentApi;
 import org.killbill.billing.payment.api.PaymentApi;
 import org.killbill.billing.payment.api.PaymentGatewayApi;
 import org.killbill.billing.payment.caching.StateMachineConfigCache;
-import org.killbill.billing.payment.core.PaymentExecutors;
-import org.killbill.billing.payment.core.PaymentMethodProcessor;
-import org.killbill.billing.payment.core.PaymentPluginServiceRegistration;
-import org.killbill.billing.payment.core.PaymentProcessor;
+import org.killbill.billing.payment.core.*;
 import org.killbill.billing.payment.core.janitor.IncompletePaymentTransactionTask;
 import org.killbill.billing.payment.core.janitor.Janitor;
 import org.killbill.billing.payment.core.sm.PaymentControlStateMachineHelper;
 import org.killbill.billing.payment.core.sm.PaymentStateMachineHelper;
 import org.killbill.billing.payment.core.sm.PluginControlPaymentAutomatonRunner;
+import org.killbill.billing.payment.core.sm.payments.PaymentLeavingStateCallback;
 import org.killbill.billing.payment.dao.PaymentDao;
 import org.killbill.billing.payment.glue.PaymentModule;
 import org.killbill.billing.payment.glue.TestPaymentModuleWithEmbeddedDB;
@@ -109,6 +107,8 @@ public abstract class PaymentTestSuiteWithEmbeddedDB extends GuicyKillbillTestSu
     protected PluginControlPaymentAutomatonRunner pluginControlPaymentAutomatonRunner;
     @Inject
     protected PaymentControlStateMachineHelper paymentControlStateMachineHelper;
+    @Inject
+    protected PaymentLocator paymentLocator;
 
     @Override
     protected KillbillConfigSource getConfigSource() {

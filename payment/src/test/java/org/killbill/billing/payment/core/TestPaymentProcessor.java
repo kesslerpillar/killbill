@@ -73,28 +73,6 @@ public class TestPaymentProcessor extends PaymentTestSuiteWithEmbeddedDB {
         eventBus.register(paymentBusListener);
     }
 
-    @Test(groups = "slow")
-    public void testGetAccountPaymentsWithJanitor() throws Exception {
-        final String paymentExternalKey = UUID.randomUUID().toString();
-
-        final Iterable<PluginProperty> pluginPropertiesToDriveTransationToUnknown = ImmutableList.<PluginProperty>of(new PluginProperty(MockPaymentProviderPlugin.PLUGIN_PROPERTY_PAYMENT_PLUGIN_STATUS_OVERRIDE, PaymentPluginStatus.UNDEFINED, false));
-
-        final String authorizationKey = UUID.randomUUID().toString();
-        final Payment authorization = paymentProcessor.createAuthorization(true, null, account, null, null, TEN, CURRENCY, paymentExternalKey, authorizationKey,
-                                                                           null, null, SHOULD_LOCK_ACCOUNT, pluginPropertiesToDriveTransationToUnknown, callContext, internalCallContext);
-        verifyPayment(authorization, paymentExternalKey, ZERO, ZERO, ZERO, 1);
-        final UUID paymentId = authorization.getId();
-        verifyPaymentTransaction(authorization.getTransactions().get(0), authorizationKey, TransactionType.AUTHORIZE, TEN, paymentId);
-        paymentBusListener.verify(0, 0, 1, account.getId(), paymentId, ZERO, TransactionStatus.UNKNOWN);
-
-        mockPaymentProviderPlugin.overridePaymentPluginStatus(paymentId, authorization.getTransactions().get(0).getId(), PaymentPluginStatus.PROCESSED);
-
-        final List<Payment> payments = paymentProcessor.getAccountPayments(account.getId(), true, false, callContext, internalCallContext);
-        Assert.assertEquals(payments.size(), 1);
-        verifyPayment(payments.get(0), paymentExternalKey, TEN, ZERO, ZERO, 1);
-        verifyPaymentTransaction(payments.get(0).getTransactions().get(0), authorizationKey, TransactionType.AUTHORIZE, TEN, paymentId);
-        paymentBusListener.verify(1, 0, 1, account.getId(), paymentId, TEN, TransactionStatus.SUCCESS);
-    }
 
     @Test(groups = "slow")
     public void testClassicFlow() throws Exception {
@@ -199,35 +177,6 @@ public class TestPaymentProcessor extends PaymentTestSuiteWithEmbeddedDB {
         final UUID paymentId = purchase.getId();
         verifyPaymentTransaction(purchase.getTransactions().get(0), creditKey, TransactionType.CREDIT, TEN, paymentId);
         paymentBusListener.verify(1, account.getId(), paymentId, TEN, TransactionStatus.SUCCESS);
-    }
-
-    @Test(groups = "slow")
-    public void testInvalidTransition() throws Exception {
-        final String paymentExternalKey = UUID.randomUUID().toString();
-        final Iterable<PluginProperty> pluginPropertiesToDriveTransationToPending = ImmutableList.<PluginProperty>of(new PluginProperty(MockPaymentProviderPlugin.PLUGIN_PROPERTY_PAYMENT_PLUGIN_STATUS_OVERRIDE, PaymentPluginStatus.ERROR, false));
-
-        // AUTH
-        final String authorizationKey = UUID.randomUUID().toString();
-        final Payment authorization = paymentProcessor.createAuthorization(true, null, account, null, null, TEN, CURRENCY, paymentExternalKey, authorizationKey,
-                                                                           null, null, SHOULD_LOCK_ACCOUNT, pluginPropertiesToDriveTransationToPending, callContext, internalCallContext);
-        verifyPayment(authorization, paymentExternalKey, ZERO, ZERO, ZERO, 1);
-        final UUID paymentId = authorization.getId();
-        verifyPaymentTransaction(authorization.getTransactions().get(0), authorizationKey, TransactionType.AUTHORIZE, TEN, paymentId);
-        paymentBusListener.verify(0, 1, 0, account.getId(), paymentId, ZERO, TransactionStatus.PAYMENT_FAILURE);
-
-        // REFUND
-        final String refundKey = UUID.randomUUID().toString();
-        try {
-            paymentProcessor.createRefund(true, null, account, paymentId, TEN, CURRENCY, refundKey,
-                                          null, SHOULD_LOCK_ACCOUNT, PLUGIN_PROPERTIES, callContext, internalCallContext);
-            Assert.fail();
-        } catch (final PaymentApiException e) {
-            Assert.assertEquals(e.getCode(), ErrorCode.PAYMENT_INVALID_OPERATION.getCode());
-        }
-        final Payment refreshedPayment = paymentProcessor.getPayment(authorization.getId(), false, false, PLUGIN_PROPERTIES, callContext, internalCallContext);
-        // Make sure no state has been created (no UNKNOWN transaction for the refund)
-        verifyPayment(refreshedPayment, paymentExternalKey, ZERO, ZERO, ZERO, 1);
-        paymentBusListener.verify(0, 1, 0, account.getId(), paymentId, ZERO, TransactionStatus.PAYMENT_FAILURE);
     }
 
     @Test(groups = "slow")

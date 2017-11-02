@@ -19,7 +19,7 @@
     <parent>
         <artifactId>killbill</artifactId>
         <groupId>org.kill-bill.billing</groupId>
-        <version>0.18.15-SNAPSHOT</version>
+        <version>0.18.14</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>killbill-profiles</artifactId>
@@ -29,4 +29,14 @@
         <module>killbill</module>
         <module>killpay</module>
     </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.palominolabs.metrics</groupId>
+                <artifactId>metrics-guice</artifactId>
+                <version>3.2.2</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 </project>

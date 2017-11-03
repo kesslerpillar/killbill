@@ -23,6 +23,7 @@ import org.killbill.billing.payment.api.PaymentApiException;
 import org.killbill.billing.payment.dao.PaymentAttemptModelDao;
 import org.killbill.billing.payment.dao.PaymentTransactionModelDao;
 import org.killbill.billing.payment.glue.DefaultPaymentService;
+import org.killbill.billing.payment.logging.LoggerFactoryWrapper;
 import org.killbill.billing.payment.retry.DefaultRetryService;
 import org.killbill.billing.payment.retry.PaymentRetryNotificationKey;
 import org.killbill.billing.util.callcontext.CallContext;
@@ -32,7 +33,6 @@ import org.killbill.notificationq.api.NotificationQueue;
 import org.killbill.notificationq.api.NotificationQueueService;
 import org.killbill.notificationq.api.NotificationQueueService.NoSuchNotificationQueue;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -42,15 +42,17 @@ import java.util.UUID;
 
 public class PaymentCanceller {
 
-    private static final Logger log = LoggerFactory.getLogger(PaymentCanceller.class);
+    private final Logger log;
     private final NotificationQueueService notificationQueueService;
     private ProcessorBase processorBase;
 
 
     @Inject
-    public PaymentCanceller(final NotificationQueueService notificationQueueService, final ProcessorBase processorBase) {
+    public PaymentCanceller(final NotificationQueueService notificationQueueService, final ProcessorBase processorBase,
+                            final LoggerFactoryWrapper loggerFactoryWrapper) {
         this.notificationQueueService = notificationQueueService;
         this.processorBase = processorBase;
+        this.log = loggerFactoryWrapper.getLogger(PaymentCanceller.class);
     }
 
 

@@ -56,22 +56,22 @@ public class PaymentCanceller {
 
     public void cancelScheduledPaymentTransaction(@Nullable final UUID paymentTransactionId, @Nullable final String paymentTransactionExternalKey, final CallContext callContext) throws PaymentApiException {
 
-        final InternalCallContext internalCallContextWithoutAccountRecordId = processorBase.internalCallContextFactory.createInternalCallContextWithoutAccountRecordId(callContext);
+        final InternalCallContext internalCallContextWithoutAccountRecordId = processorBase.getInternalCallContextFactory().createInternalCallContextWithoutAccountRecordId(callContext);
         final String effectivePaymentTransactionExternalKey;
         if (paymentTransactionExternalKey == null) {
-            final PaymentTransactionModelDao transaction = processorBase.paymentDao.getPaymentTransaction(paymentTransactionId, internalCallContextWithoutAccountRecordId);
+            final PaymentTransactionModelDao transaction = processorBase.getPaymentDao().getPaymentTransaction(paymentTransactionId, internalCallContextWithoutAccountRecordId);
             effectivePaymentTransactionExternalKey = transaction.getTransactionExternalKey();
         } else {
             effectivePaymentTransactionExternalKey = paymentTransactionExternalKey;
         }
 
-        final List<PaymentAttemptModelDao> attempts = processorBase.paymentDao.getPaymentAttemptByTransactionExternalKey(effectivePaymentTransactionExternalKey, internalCallContextWithoutAccountRecordId);
+        final List<PaymentAttemptModelDao> attempts = processorBase.getPaymentDao().getPaymentAttemptByTransactionExternalKey(effectivePaymentTransactionExternalKey, internalCallContextWithoutAccountRecordId);
         if (attempts.isEmpty()) {
             return;
         }
 
         final PaymentAttemptModelDao lastPaymentAttempt = attempts.get(attempts.size() - 1);
-        final InternalCallContext internalCallContext = processorBase.internalCallContextFactory.createInternalCallContext(lastPaymentAttempt.getAccountId(), callContext);
+        final InternalCallContext internalCallContext = processorBase.getInternalCallContextFactory().createInternalCallContext(lastPaymentAttempt.getAccountId(), callContext);
 
         cancelScheduledPaymentTransaction(lastPaymentAttempt.getId(), internalCallContext);
     }

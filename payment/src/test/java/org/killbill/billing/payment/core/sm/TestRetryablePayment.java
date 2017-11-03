@@ -111,6 +111,8 @@ public class TestRetryablePayment extends PaymentTestSuiteNoDB {
     private PaymentLocator paymentLocator;
     @Inject
     private PaymentCanceller paymentCanceller;
+    @Inject
+    private ProcessorBase processorBase;
 
     private Account account;
     private DateTime utcNow;
@@ -206,14 +208,13 @@ public class TestRetryablePayment extends PaymentTestSuiteNoDB {
 
         processor = new PluginControlPaymentProcessor(paymentPluginServiceRegistration,
                                                       accountInternalApi,
-                                                      null,
                                                       tagApi,
                                                       paymentDao,
                                                       locker,
                                                       internalCallContextFactory,
                                                       runner,
                                                       retrySMHelper,
-                                                      clock
+                                                      processorBase
         );
 
     }

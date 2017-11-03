@@ -73,22 +73,23 @@ public class PluginControlPaymentProcessor extends ProcessorBase {
     private static final Joiner JOINER = Joiner.on(", ");
 
     private final PluginControlPaymentAutomatonRunner pluginControlledPaymentAutomatonRunner;
+    private ProcessorBase processorBase;
     private final PaymentControlStateMachineHelper paymentControlStateMachineHelper;
 
     @Inject
     public PluginControlPaymentProcessor(final PaymentPluginServiceRegistration paymentPluginServiceRegistration,
                                          final AccountInternalApi accountInternalApi,
-                                         final InvoiceInternalApi invoiceApi,
                                          final TagInternalApi tagUserApi,
                                          final PaymentDao paymentDao,
                                          final GlobalLocker locker,
                                          final InternalCallContextFactory internalCallContextFactory,
                                          final PluginControlPaymentAutomatonRunner pluginControlledPaymentAutomatonRunner,
                                          final PaymentControlStateMachineHelper paymentControlStateMachineHelper,
-                                         final Clock clock) {
-        super(paymentPluginServiceRegistration, accountInternalApi, paymentDao, tagUserApi, locker, internalCallContextFactory, invoiceApi, clock);
+                                         final ProcessorBase processorBase) {
+        super(paymentPluginServiceRegistration, accountInternalApi, paymentDao, tagUserApi, locker, internalCallContextFactory);
         this.paymentControlStateMachineHelper = paymentControlStateMachineHelper;
         this.pluginControlledPaymentAutomatonRunner = pluginControlledPaymentAutomatonRunner;
+        this.processorBase = processorBase;
     }
 
     public Payment createAuthorization(final boolean isApiPayment, final Account account, final UUID paymentMethodId, @Nullable final UUID paymentId, final BigDecimal amount, final Currency currency, final String paymentExternalKey, final String transactionExternalKey,
@@ -198,8 +199,8 @@ public class PluginControlPaymentProcessor extends ProcessorBase {
     }
 
     public Payment notifyPendingPaymentOfStateChanged(final boolean isApiPayment, final Account account, final UUID paymentTransactionId, final boolean isSuccess, final List<String> paymentControlPluginNames, final CallContext callContext, final InternalCallContext internalCallContext) throws PaymentApiException {
-        final PaymentTransactionModelDao paymentTransactionModelDao = paymentDao.getPaymentTransaction(paymentTransactionId, internalCallContext);
-        final List<PaymentAttemptModelDao> attempts = paymentDao.getPaymentAttemptByTransactionExternalKey(paymentTransactionModelDao.getTransactionExternalKey(), internalCallContext);
+        final PaymentTransactionModelDao paymentTransactionModelDao = processorBase.getPaymentDao().getPaymentTransaction(paymentTransactionId, internalCallContext);
+        final List<PaymentAttemptModelDao> attempts = processorBase.getPaymentDao().getPaymentAttemptByTransactionExternalKey(paymentTransactionModelDao.getTransactionExternalKey(), internalCallContext);
         final PaymentAttemptModelDao attempt = Iterables.find(attempts,
                                                               new Predicate<PaymentAttemptModelDao>() {
                                                                   @Override
@@ -269,11 +270,11 @@ public class PluginControlPaymentProcessor extends ProcessorBase {
     }
 
     public void retryPaymentTransaction(final UUID attemptId, final List<String> paymentControlPluginNames, final InternalCallContext internalCallContext) {
-        final PaymentAttemptModelDao attempt = paymentDao.getPaymentAttempt(attemptId, internalCallContext);
+        final PaymentAttemptModelDao attempt = processorBase.getPaymentDao().getPaymentAttempt(attemptId, internalCallContext);
         log.info("Retrying attemptId='{}', paymentExternalKey='{}', transactionExternalKey='{}'. paymentControlPluginNames='{}'",
                  attemptId, attempt.getPaymentExternalKey(), attempt.getTransactionExternalKey(), paymentControlPluginNames);
 
-        final PaymentModelDao paymentModelDao = paymentDao.getPaymentByExternalKey(attempt.getPaymentExternalKey(), internalCallContext);
+        final PaymentModelDao paymentModelDao = processorBase.getPaymentDao().getPaymentByExternalKey(attempt.getPaymentExternalKey(), internalCallContext);
         final UUID paymentId = paymentModelDao != null ? paymentModelDao.getId() : null;
 
         final CallContext callContext = buildCallContext(internalCallContext);
@@ -283,7 +284,7 @@ public class PluginControlPaymentProcessor extends ProcessorBase {
         Payment payment = null;
         PaymentTransaction paymentTransaction = null;
         try {
-            account = accountInternalApi.getAccountById(attempt.getAccountId(), internalCallContext);
+            account = processorBase.getAccountInternalApi().getAccountById(attempt.getAccountId(), internalCallContext);
             final State state = paymentControlStateMachineHelper.getState(attempt.getStateName());
             final Iterable<PluginProperty> pluginProperties = PluginPropertySerializer.deserialize(attempt.getPluginProperties());
 

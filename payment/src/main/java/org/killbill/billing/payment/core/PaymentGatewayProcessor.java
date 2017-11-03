@@ -55,26 +55,27 @@ public class PaymentGatewayProcessor extends ProcessorBase {
 
     private final PluginDispatcher<HostedPaymentPageFormDescriptor> paymentPluginFormDispatcher;
     private final PluginDispatcher<GatewayNotification> paymentPluginNotificationDispatcher;
+    private ProcessorBase processorBase;
 
     @Inject
     public PaymentGatewayProcessor(final PaymentPluginServiceRegistration paymentPluginServiceRegistration,
                                    final AccountInternalApi accountUserApi,
-                                   final InvoiceInternalApi invoiceApi,
                                    final TagInternalApi tagUserApi,
                                    final PaymentDao paymentDao,
                                    final GlobalLocker locker,
                                    final PaymentConfig paymentConfig,
                                    final PaymentExecutors executors,
                                    final InternalCallContextFactory internalCallContextFactory,
-                                   final Clock clock) {
-        super(paymentPluginServiceRegistration, accountUserApi, paymentDao, tagUserApi, locker, internalCallContextFactory, invoiceApi, clock);
+                                   final ProcessorBase processorBase) {
+        super(paymentPluginServiceRegistration, accountUserApi, paymentDao, tagUserApi, locker, internalCallContextFactory);
+        this.processorBase = processorBase;
         final long paymentPluginTimeoutSec = TimeUnit.SECONDS.convert(paymentConfig.getPaymentPluginTimeout().getPeriod(), paymentConfig.getPaymentPluginTimeout().getUnit());
         this.paymentPluginFormDispatcher = new PluginDispatcher<HostedPaymentPageFormDescriptor>(paymentPluginTimeoutSec, executors);
         this.paymentPluginNotificationDispatcher = new PluginDispatcher<GatewayNotification>(paymentPluginTimeoutSec, executors);
     }
 
     public GatewayNotification processNotification(final boolean shouldDispatch, final String notification, final UUID paymentMethodId, final Iterable<PluginProperty> properties, final CallContext callContext) throws PaymentApiException {
-        final InternalCallContext internalCallContext = internalCallContextFactory.createInternalCallContext(paymentMethodId, ObjectType.PAYMENT_METHOD, callContext);
+        final InternalCallContext internalCallContext = processorBase.getInternalCallContextFactory().createInternalCallContext(paymentMethodId, ObjectType.PAYMENT_METHOD, callContext);
         final String pluginName = getPaymentMethodById(paymentMethodId, true, internalCallContext).getPluginName();
         return processNotification(shouldDispatch, notification, pluginName, properties, callContext);
     }

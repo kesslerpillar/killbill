@@ -56,8 +56,8 @@ public class PaymentLocator {
 
 
     public List<Payment> getAccountPayments(final UUID accountId, final boolean withPluginInfo, final boolean withAttempts, final TenantContext context, final InternalTenantContext tenantContext) throws PaymentApiException {
-        final List<PaymentModelDao> paymentsModelDao = processorBase.paymentDao.getPaymentsForAccount(accountId, tenantContext);
-        final List<PaymentTransactionModelDao> transactionsModelDao = processorBase.paymentDao.getTransactionsForAccount(accountId, tenantContext);
+        final List<PaymentModelDao> paymentsModelDao = processorBase.getPaymentDao().getPaymentsForAccount(accountId, tenantContext);
+        final List<PaymentTransactionModelDao> transactionsModelDao = processorBase.getPaymentDao().getTransactionsForAccount(accountId, tenantContext);
 
         final Map<UUID, PaymentPluginApi> paymentPluginByPaymentMethodId = new HashMap<UUID, PaymentPluginApi>();
         final Collection<UUID> absentPlugins = new HashSet<UUID>();
@@ -91,12 +91,12 @@ public class PaymentLocator {
     }
 
     public Payment getPayment(final UUID paymentId, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-        final PaymentModelDao paymentModelDao = processorBase.paymentDao.getPayment(paymentId, internalTenantContext);
+        final PaymentModelDao paymentModelDao = processorBase.getPaymentDao().getPayment(paymentId, internalTenantContext);
         return getPayment(paymentModelDao, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
     }
 
     public Payment getPaymentByExternalKey(final String paymentExternalKey, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-        final PaymentModelDao paymentModelDao = processorBase.paymentDao.getPaymentByExternalKey(paymentExternalKey, internalTenantContext);
+        final PaymentModelDao paymentModelDao = processorBase.getPaymentDao().getPaymentByExternalKey(paymentExternalKey, internalTenantContext);
         return getPayment(paymentModelDao, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
     }
 
@@ -115,7 +115,7 @@ public class PaymentLocator {
                     @Override
                     public Pagination<PaymentModelDao> build() {
                         // Find all payments for all accounts
-                        return processorBase.paymentDao.getPayments(pluginName, offset, limit, internalTenantContext);
+                        return processorBase.getPaymentDao().getPayments(pluginName, offset, limit, internalTenantContext);
                     }
                 },
                 new Function<PaymentModelDao, Payment>() {
@@ -138,7 +138,7 @@ public class PaymentLocator {
                         @Override
                         public Pagination<PaymentModelDao> build() {
                             // Find all payments for all accounts
-                            return processorBase.paymentDao.get(offset, limit, internalTenantContext);
+                            return processorBase.getPaymentDao().get(offset, limit, internalTenantContext);
                         }
                     },
                     new Function<PaymentModelDao, Payment>() {
@@ -191,7 +191,7 @@ public class PaymentLocator {
                         new DefaultPaginationHelper.SourcePaginationBuilder<PaymentModelDao, PaymentApiException>() {
                             @Override
                             public Pagination<PaymentModelDao> build() {
-                                return processorBase.paymentDao.searchPayments(searchKey, offset, limit, internalTenantContext);
+                                return processorBase.getPaymentDao().searchPayments(searchKey, offset, limit, internalTenantContext);
                             }
                         },
                         new Function<PaymentModelDao, Payment>() {
@@ -252,9 +252,9 @@ public class PaymentLocator {
 
 
     public Payment getPaymentByTransactionId(final UUID transactionId, final boolean withPluginInfo, final boolean withAttempts, final Iterable<PluginProperty> properties, final TenantContext tenantContext, final InternalTenantContext internalTenantContext) throws PaymentApiException {
-        final PaymentTransactionModelDao paymentTransactionDao = processorBase.paymentDao.getPaymentTransaction(transactionId, internalTenantContext);
+        final PaymentTransactionModelDao paymentTransactionDao = processorBase.getPaymentDao().getPaymentTransaction(transactionId, internalTenantContext);
         if (null != paymentTransactionDao) {
-            PaymentModelDao paymentModelDao = processorBase.paymentDao.getPayment(paymentTransactionDao.getPaymentId(), internalTenantContext);
+            PaymentModelDao paymentModelDao = processorBase.getPaymentDao().getPayment(paymentTransactionDao.getPaymentId(), internalTenantContext);
             return toPayment(paymentModelDao, withPluginInfo, withAttempts, properties, tenantContext, internalTenantContext);
         }
         return null;
@@ -262,7 +262,7 @@ public class PaymentLocator {
 
     // Used in bulk get APIs (getPayments / searchPayments)
     private Payment toPayment(final UUID paymentId, @Nullable final Iterable<PaymentTransactionInfoPlugin> pluginTransactions, final boolean withAttempts, final InternalTenantContext tenantContext) {
-        final PaymentModelDao paymentModelDao = processorBase.paymentDao.getPayment(paymentId, tenantContext);
+        final PaymentModelDao paymentModelDao = processorBase.getPaymentDao().getPayment(paymentId, tenantContext);
         if (paymentModelDao == null) {
             log.warn("Unable to find payment id " + paymentId);
             return null;
@@ -274,7 +274,7 @@ public class PaymentLocator {
     private Payment toPayment(final PaymentModelDao paymentModelDao, @Nullable final Iterable<PaymentTransactionInfoPlugin> pluginTransactions,
                               final boolean withAttempts, final InternalTenantContext tenantContext) {
         final InternalTenantContext tenantContextWithAccountRecordId = getInternalTenantContextWithAccountRecordId(paymentModelDao.getAccountId(), tenantContext);
-        final List<PaymentTransactionModelDao> transactionsForPayment = processorBase.paymentDao.getTransactionsForPayment(paymentModelDao.getId(), tenantContextWithAccountRecordId);
+        final List<PaymentTransactionModelDao> transactionsForPayment = processorBase.getPaymentDao().getTransactionsForPayment(paymentModelDao.getId(), tenantContextWithAccountRecordId);
 
         return toPayment(paymentModelDao, transactionsForPayment, pluginTransactions, withAttempts, tenantContextWithAccountRecordId);
     }
@@ -322,7 +322,7 @@ public class PaymentLocator {
                 curPaymentModelDao.getExternalKey(),
                 sortedTransactions,
                 (withAttempts && !sortedTransactions.isEmpty()) ?
-                        getPaymentAttempts(processorBase.paymentDao.getPaymentAttempts(curPaymentModelDao.getExternalKey(), internalTenantContext),
+                        getPaymentAttempts(processorBase.getPaymentDao().getPaymentAttempts(curPaymentModelDao.getExternalKey(), internalTenantContext),
                                 internalTenantContext) : null
         );
     }
@@ -332,7 +332,7 @@ public class PaymentLocator {
     private InternalTenantContext getInternalTenantContextWithAccountRecordId(final UUID accountId, final InternalTenantContext tenantContext) {
         final InternalTenantContext tenantContextWithAccountRecordId;
         if (tenantContext.getAccountRecordId() == null) {
-            tenantContextWithAccountRecordId = processorBase.internalCallContextFactory.createInternalTenantContext(accountId, tenantContext);
+            tenantContextWithAccountRecordId = processorBase.getInternalCallContextFactory().createInternalTenantContext(accountId, tenantContext);
         } else {
             tenantContextWithAccountRecordId = tenantContext;
         }
@@ -381,8 +381,8 @@ public class PaymentLocator {
                 // See https://github.com/killbill/killbill/issues/341
                 final boolean hasChanged = incompletePaymentTransactionTask.updatePaymentAndTransactionIfNeededWithAccountLock(newPaymentModelDao, newPaymentTransactionModelDao, paymentTransactionInfoPlugin, internalTenantContext);
                 if (hasChanged) {
-                    newPaymentModelDao = processorBase.paymentDao.getPayment(newPaymentModelDao.getId(), internalTenantContext);
-                    newPaymentTransactionModelDao = processorBase.paymentDao.getPaymentTransaction(newPaymentTransactionModelDao.getId(), internalTenantContext);
+                    newPaymentModelDao = processorBase.getPaymentDao().getPayment(newPaymentModelDao.getId(), internalTenantContext);
+                    newPaymentTransactionModelDao = processorBase.getPaymentDao().getPaymentTransaction(newPaymentTransactionModelDao.getId(), internalTenantContext);
                 }
             }
 

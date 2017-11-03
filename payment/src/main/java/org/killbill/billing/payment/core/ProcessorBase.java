@@ -56,19 +56,17 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 
-public class ProcessorBase {
+public class ProcessorBase{
 
     private static final Logger log = LoggerFactory.getLogger(ProcessorBase.class);
 
     private final PaymentPluginServiceRegistration paymentPluginServiceRegistration;
 
-    protected final AccountInternalApi accountInternalApi;
-    protected final GlobalLocker locker;
-    protected final PaymentDao paymentDao;
-    protected final InternalCallContextFactory internalCallContextFactory;
-    protected final TagInternalApi tagInternalApi;
-    protected final Clock clock;
-    protected final InvoiceInternalApi invoiceApi;
+    private final AccountInternalApi accountInternalApi;
+    private final GlobalLocker locker;
+    private final PaymentDao paymentDao;
+    private final InternalCallContextFactory internalCallContextFactory;
+    private final TagInternalApi tagInternalApi;
 
     @Inject
     public ProcessorBase(final PaymentPluginServiceRegistration paymentPluginServiceRegistration,
@@ -76,17 +74,13 @@ public class ProcessorBase {
                          final PaymentDao paymentDao,
                          final TagInternalApi tagInternalApi,
                          final GlobalLocker locker,
-                         final InternalCallContextFactory internalCallContextFactory,
-                         final InvoiceInternalApi invoiceApi,
-                         final Clock clock) {
+                         final InternalCallContextFactory internalCallContextFactory) {
         this.paymentPluginServiceRegistration = paymentPluginServiceRegistration;
         this.accountInternalApi = accountInternalApi;
         this.paymentDao = paymentDao;
         this.locker = locker;
         this.tagInternalApi = tagInternalApi;
         this.internalCallContextFactory = internalCallContextFactory;
-        this.invoiceApi = invoiceApi;
-        this.clock = clock;
     }
 
     protected boolean isAccountAutoPayOff(final UUID accountId, final InternalTenantContext context) {
@@ -138,6 +132,14 @@ public class ProcessorBase {
         return internalCallContextFactory.createCallContext(context);
     }
 
+    public PaymentDao getPaymentDao() {
+        return paymentDao;
+    }
+
+    public AccountInternalApi getAccountInternalApi() {
+        return accountInternalApi;
+    }
+
     public interface DispatcherCallback<PluginDispatcherReturnType, ExceptionType extends Exception> {
         public PluginDispatcherReturnType doOperation() throws ExceptionType;
     }
@@ -163,6 +165,14 @@ public class ProcessorBase {
         public PluginDispatcherReturnType<ReturnType> call() throws ExceptionType, LockFailedException {
             return new WithAccountLock<ReturnType, ExceptionType>(paymentConfig).processAccountWithLock(locker, accountId, callback);
         }
+    }
+
+    public InternalCallContextFactory getInternalCallContextFactory() {
+        return internalCallContextFactory;
+    }
+
+    public GlobalLocker getLocker() {
+        return locker;
     }
 
     public static class WithAccountLock<ReturnType, ExceptionType extends Exception> {

@@ -117,15 +117,14 @@ public class PaymentProcessor{
     }
 
     public Payment notifyPendingPaymentOfStateChanged(final Account account, final UUID transactionId, final boolean isSuccess, final CallContext callContext, final InternalCallContext internalCallContext) throws PaymentApiException {
-        final PaymentTransactionModelDao transactionModelDao = processorBase.paymentDao.getPaymentTransaction(transactionId, internalCallContext);
+        final PaymentTransactionModelDao transactionModelDao = processorBase.getPaymentDao().getPaymentTransaction(transactionId, internalCallContext);
         if (transactionModelDao.getTransactionStatus() != TransactionStatus.PENDING) {
             throw new PaymentApiException(ErrorCode.PAYMENT_NO_SUCH_SUCCESS_PAYMENT, transactionModelDao.getPaymentId());
         }
 
         final OperationResult overridePluginResult = isSuccess ? OperationResult.SUCCESS : OperationResult.FAILURE;
 
-        final boolean runJanitor = false;
-        return performOperation(true, runJanitor, null, transactionModelDao.getTransactionType(), account, null, transactionModelDao.getPaymentId(),
+        return performOperation(true, false, null, transactionModelDao.getTransactionType(), account, null, transactionModelDao.getPaymentId(),
                                 transactionModelDao.getId(), transactionModelDao.getAmount(), transactionModelDao.getCurrency(), null, transactionModelDao.getTransactionExternalKey(), null, null, true,
                                 overridePluginResult, PLUGIN_PROPERTIES, callContext, internalCallContext);
     }
@@ -265,7 +264,7 @@ public class PaymentProcessor{
             if (!paymentTransactionModelDao.getAccountRecordId().equals(internalCallContext.getAccountRecordId())) {
                 UUID accountId;
                 try {
-                    accountId = processorBase.accountInternalApi.getAccountByRecordId(paymentTransactionModelDao.getAccountRecordId(), internalCallContext).getId();
+                    accountId = processorBase.getAccountInternalApi().getAccountByRecordId(paymentTransactionModelDao.getAccountRecordId(), internalCallContext).getId();
                 } catch (final AccountApiException e) {
                     log.warn("Unable to retrieve account", e);
                     accountId = null;
